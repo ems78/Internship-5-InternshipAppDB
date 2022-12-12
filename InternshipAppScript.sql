@@ -603,11 +603,17 @@ WHERE TownID not in (SELECT TownID FROM Towns WHERE Name like 'Split')
 
 
 
+
+
+
 -- ispišite datum početka i kraja svakog Internshipa, sortiranih po datumu početka od novijeg prema starom
 
 SELECT PlannedStart, PlannedEnd
 FROM Internships
 ORDER BY PlannedStart DESC
+
+
+
 
 
 
@@ -619,6 +625,8 @@ INNER JOIN InternFields ON Interns.InternID = InternFields.InternID
 INNER JOIN InternshipFields ON InternFields.InternshipFieldID = InternshipFields.InternshipFieldID 
 INNER JOIN Internships ON InternshipFields.InternshipID = Internships.InternshipID 
 WHERE Internships.PlannedStart > '2021-01-01'  AND  Internships.PlannedStart < '2021-12-12'
+
+
 
 
 
@@ -637,6 +645,8 @@ WHERE Interns.GenderID = 2
 	   
 
 
+
+
 	   
 -- svim članovima čije prezime završava na -in promijenite mjesto stanovanja u Moskvu
 
@@ -651,6 +661,9 @@ SET TownID = (SELECT TownID FROM Towns WHERE Name like 'Moskva')
 WHERE Surname like '%in'
 
 
+
+
+
 -- izbrišite sve članove starije od 25 godina
 
 DELETE FROM Interns
@@ -658,31 +671,59 @@ WHERE date_part('year', AGE(BirthDate)) > 25
 
 
 
+
+
 -- izbacite sve pripravnike s prosjekom ocjena manjim od 2.4 na tom području
 
+SELECT COUNT(*) FROM InternFields
+WHERE StatusID = 1
+
+
 UPDATE InternFields
-SET StatusID = (SELECT StatusID FROM InternStatuses WHERE Meaning like '')
+SET StatusID = (SELECT StatusID FROM InternStatuses WHERE Meaning like 'kicked out')
+WHERE InternFields.StatusID = (SELECT StatusID FROM InternStatuses WHERE Meaning like 'current intern') 
+HAVING (SELECT ROUND(AVG(ma.label), 2) as AverageMark FROM InternMarks im
+		INNER JOIN Marks ma ON ma.markid = im.markid
+		INNER JOIN internfields inf ON inf.internfieldid = im.internfieldid
+		GROUP BY im.internfieldid) < 2.4
 
 
-SELECT Marks.Label, AVG(Mark.Label)
-FROM Marks
-INNER JOIN InternMarks ON InternMarks.MarkID = Marks.MarkID
-GROUP BY MarkID
+UPDATE InternFields
+SET StatusID = (SELECT StatusID FROM InternStatuses WHERE Meaning like 'kicked out')
+WHERE InternFields.StatusID = (SELECT StatusID FROM InternStatuses WHERE Meaning like 'current intern') 
+AND (ROUND(AVG(ma.label), 2) as AverageMark FROM InternMarks im
+		INNER JOIN Marks ma ON ma.markid = im.markid
+		INNER JOIN internfields inf ON inf.internfieldid = im.internfieldid
+		GROUP BY im.internfieldid)
+		HAVING ROUND(AVG(ma.label), 2) < 2.4
+		
+		
+SELECT inf.internid FROM internfields inf
+WHERE (SELECT ROUND(AVG(ma.label), 2) FROM internmarks im
+			INNER JOIN marks ma ON ma.markid = im.markid
+			INNER JOIN internfields inf on inf.internfieldid = im.internfieldid
+			GROUP BY im.internfieldid) < 2.4
+				
 
--- napravit popis ocjena po predmetu za interna
-
-SELECT AVG(Marks.Label)
-FROM Marks
-INNER JOIN InternMarks ON Marks.MarkID = InternMarks.MarkID
-INNER JOIN InternFields ON InternMarks.InternFieldID = InternFields.InternFieldID
-GROUP BY InternMarks.InternMarkID 
-
-INNER JOIN Marks ON InternMarks.MarkID = Marks.MarkID
-GROUP BY InternMarks.MarkID
+   -- izlistane valjda prosjecne ocjene svih koji su za izbacit.
+SELECT ROUND(AVG(ma.label), 2) as AverageMark FROM InternMarks im
+INNER JOIN Marks ma ON ma.markid = im.markid
+INNER JOIN internfields inf ON inf.internfieldid = im.internfieldid
+GROUP BY im.internfieldid
+HAVING ROUND(AVG(ma.label), 2) < 2.4
 
 
 
 
+SELECT inf.internid, (SELECT ROUND(AVG(ma.label), 2) as AverageMark FROM InternMarks im
+						INNER JOIN Marks ma ON ma.markid = im.markid
+						INNER JOIN internfields inf ON inf.internfieldid = im.internfieldid
+					    WHERE im.internfieldid = inf.internfieldid
+						GROUP BY im.internfieldid
+						HAVING ROUND(AVG(ma.label), 2) < 2.4)
+FROM internfields inf
 
-	
+
+
+
 
